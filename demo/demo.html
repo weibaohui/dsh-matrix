@@ -77,6 +77,7 @@ ctx.globalCompositeOperation = 'source-over'</pre></div>
   <label><button id="busy" style="font-size:12px;padding:3px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit;cursor:pointer">模拟 agent 活动</button></label>
 </div>
 
+<script src="../client/detect.js"></script>
 <script src="../client/rain.js"></script>
 <script>
   const canvas = document.createElement('canvas')
@@ -139,11 +140,21 @@ ctx.globalCompositeOperation = 'source-over'</pre></div>
   if (q.has('themeLight')) $('themeLight').value = q.get('themeLight')
   applyDemoTheme()
 
-  // 显示范围：?region=no-left 时雨从假会话栏（220px）右缘开始，插件同款
+  // 显示范围：?region=no-left 时雨从对话区左缘开始——动态探测（aside 假侧栏
+  // 的右缘），收缩/拖宽自动跟随，与插件同款
   if (q.get('region') === 'no-left') {
-    canvas.style.left = '220px'
+    canvas.style.top = '0'
+    canvas.style.bottom = '0'
+    canvas.style.right = '0'
     canvas.style.width = 'auto'
-    rain.resize()
+    const updLeft = () => {
+      const l = detectMainLeft()
+      canvas.style.left = l == null ? 'clamp(220px, 24vw, 400px)' : Math.max(0, Math.round(l)) + 'px'
+      rain.resize()
+    }
+    updLeft()
+    window.addEventListener('resize', updLeft)
+    setInterval(updLeft, 2000)
   }
   if (q.get('feed') === '0') rain.setFeed(false)
 

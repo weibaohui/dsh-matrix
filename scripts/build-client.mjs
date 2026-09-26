@@ -28,10 +28,11 @@ const helper = (name) => readFileSync(join(here, '..', 'client', name), 'utf8')
   .replace(/^if \(typeof module !== 'undefined' && module\.exports\) module\.exports = .+$/gm, '')
   .trim()
 
+const detect = helper('detect.js')
 const rain = helper('rain.js')
 const source = readFileSync(join(here, '..', 'client', 'index.js'), 'utf8').trim()
 
-const banner = `/* Generated from client/rain.js + client/index.js by scripts/build-client.mjs — do not edit by hand.
+const banner = `/* Generated from client/detect.js + client/rain.js + client/index.js by scripts/build-client.mjs — do not edit by hand.
  * Regenerate with: npm run build:client
  */
 window.__ModuleLoader__.load({
@@ -54,6 +55,6 @@ const indent = (code) => code
   .map((line) => (line.length === 0 ? line : '    ' + line))
   .join('\n')
 
-const body = `${indent(rain)}\n\n${indent(source)}`
+const body = `${indent(detect)}\n\n${indent(rain)}\n\n${indent(source)}`
 writeFileSync(join(here, '..', 'client', 'bundle.js'), banner + body + footer)
 console.log(`built client/bundle.js (${Buffer.byteLength(banner + body + footer, 'utf8')} bytes)`)

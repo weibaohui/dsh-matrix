@@ -1,4 +1,4 @@
-/* Generated from client/rain.js + client/index.js by scripts/build-client.mjs — do not edit by hand.
+/* Generated from client/detect.js + client/rain.js + client/index.js by scripts/build-client.mjs — do not edit by hand.
  * Regenerate with: npm run build:client
  */
 window.__ModuleLoader__.load({
@@ -8,6 +8,124 @@ window.__ModuleLoader__.load({
     var exports = module.exports
     Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" })
     var React = require("react")
+    /**
+     * dsh-matrix — 对话区左缘探测（动态识别侧栏宽度）
+     *
+     * 侧栏可收缩、可拖宽，固定 clamp 偏移会错位。这里用几何探测替代固定值，
+     * 不依赖 shell 的编译期类名，三级递进：
+     *
+     *   1. 输入框祖先链：对话输入 textarea 向上爬祖先，取「宽 ≥40vw 且高 ≥50vh」
+     *      祖先中最靠右的左缘——即主对话列（composer 列窄于阈值被跳过，app 根
+     *      left=0 被 max 折掉，天然抗误判）
+     *   2. 侧栏元素：aside / nav / [role=complementary|navigation] / class 含
+     *      sidebar|side-bar|sider——贴左缘、高度过半、宽度像侧栏者，右缘即对话区
+     *   3. 兜底：结构化 main / [role=main]，再不行宽泛 class 探测
+     *
+     * 全部探测不到 → 返回 null，调用方回退 clamp 估算。
+     * pickComposerLeft / pickMainLeft / pickSidebarRight 为纯函数，node 离线测试。
+     */
+
+    /** 侧栏宽度像样区间：覆盖图标栏（收缩态 ~48px）到拖宽上限。 */
+    const SIDEBAR_W_MIN = 36
+    const SIDEBAR_W_MAX = 600
+
+    const MAIN_SEL_STRUCTURAL = 'main, [role="main"]'
+    const MAIN_SEL_LOOSE = '[class*="chat" i], [class*="conversation" i]'
+    const SIDEBAR_SEL = 'aside, nav, [role="complementary"], [role="navigation"], [class*="sidebar" i], [class*="side-bar" i], [class*="sider" i]'
+
+    /**
+     * 可见且有面积才返回 rect（display:none / 零尺寸 → null，
+     * 侧栏收缩隐藏时自然落到「无侧栏」分支）。
+     */
+    function visibleRect(el) {
+      try {
+        const r = el.getBoundingClientRect()
+        if (r.width <= 0 || r.height <= 0) return null
+        const cs = getComputedStyle(el)
+        if (cs.display === 'none' || cs.visibility === 'hidden') return null
+        return r
+      } catch { return null }
+    }
+
+    /**
+     * 输入框祖先链 → 主对话列左缘：宽 ≥40vw 且高 ≥50vh 的祖先里最靠右的 left。
+     * 纯函数：rects 按从内到外的祖先顺序（含输入框自身可不入）。
+     */
+    function pickComposerLeft(rects, vw, vh) {
+      let best = null
+      for (const r of rects) {
+        if (r.width < vw * 0.4) continue
+        if (r.height < vh * 0.5) continue
+        best = best == null ? r.left : Math.max(best, r.left)
+      }
+      return best
+    }
+
+    /** 主区候选 → 合格（宽 ≥40vw、高 ≥50vh、不离谱偏移）者中最靠左的左缘。 */
+    function pickMainLeft(rects, vw, vh) {
+      let best = null
+      for (const r of rects) {
+        if (r.width < vw * 0.4) continue
+        if (r.height < vh * 0.5) continue
+        if (r.left < 0 || r.left > vw * 0.5) continue
+        if (best == null || r.left < best) best = r.left
+      }
+      return best
+    }
+
+    /** 侧栏候选 → 贴左缘、高度过半、宽度像侧栏者中最宽者的右缘。 */
+    function pickSidebarRight(rects, vh) {
+      let best = null
+      for (const r of rects) {
+        if (r.left > 8) continue
+        if (r.width < SIDEBAR_W_MIN || r.width > SIDEBAR_W_MAX) continue
+        if (r.height < vh * 0.5) continue
+        if (!best || r.width > best.width) best = r
+      }
+      return best ? best.right : null
+    }
+
+    /** 浏览器侧：探测对话区左缘 px；全部探测不到返回 null（调用方回退估算）。 */
+    function detectMainLeft() {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return null
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+
+      // 1. 输入框祖先链
+      for (const ta of document.querySelectorAll('textarea')) {
+        const rects = []
+        let el = ta
+        for (let i = 0; el && el !== document.body && i < 10; i += 1) {
+          const r = visibleRect(el)
+          if (r) rects.push(r)
+          el = el.parentElement
+        }
+        const left = pickComposerLeft(rects, vw, vh)
+        if (left != null) return left
+      }
+
+      // 2. 侧栏元素右缘
+      const sidebarRects = []
+      for (const el of document.querySelectorAll(SIDEBAR_SEL)) {
+        const r = visibleRect(el)
+        if (r) sidebarRects.push(r)
+      }
+      const side = pickSidebarRight(sidebarRects, vh)
+      if (side != null) return side
+
+      // 3. main 结构 → 宽泛 class
+      for (const sel of [MAIN_SEL_STRUCTURAL, MAIN_SEL_LOOSE]) {
+        const rects = []
+        for (const el of document.querySelectorAll(sel)) {
+          const r = visibleRect(el)
+          if (r) rects.push(r)
+        }
+        const left = pickMainLeft(rects, vw, vh)
+        if (left != null) return left
+      }
+      return null
+    }
+
     /**
      * dsh-matrix — 数字雨引擎（Canvas2D，零依赖）
      *
@@ -647,13 +765,16 @@ window.__ModuleLoader__.load({
     const REGION_LABEL_KEYS = { 'no-left': 'regionNoLeft', fullscreen: 'regionFullscreen' }
 
     /**
-     * 显示范围：画布不必铺满全屏。除左侧栏 = 从侧栏右缘起雨（侧栏宽度用
-     * dsh-flow 同款 clamp 估算）；区域键与宿主 REGIONS 枚举一致。
+     * 显示范围：画布不必铺满全屏。除左侧栏 = 从对话区左缘起雨——左缘由
+     * detectMainLeft() 动态探测（输入框祖先链 → 侧栏元素 → main 结构，三级
+     * 递进），侧栏收缩/拖宽实时跟随；探测不到回退 clamp 估算。区域键与宿主
+     * REGIONS 枚举一致。
      */
     const REGION_CSS = {
-      'no-left': { top: '0', bottom: '0', left: 'clamp(220px, 24vw, 400px)', right: '0' },
+      'no-left': { top: '0', bottom: '0', right: '0' },
       fullscreen: { top: '0', left: '0', width: '100vw', height: '100vh' },
     }
+    const NO_LEFT_FALLBACK = 'clamp(220px, 24vw, 400px)'
 
     // ── 雨布浮层 ─────────────────────────────────────────────────────────────
 
@@ -670,6 +791,7 @@ window.__ModuleLoader__.load({
 
       const engine = createRain(canvas, {})
       let region = 'no-left'
+      let lastLeftCss = null
 
       // 先清后设：切换区域时旧的长宽/锚点不能残留
       const applyRegion = (r) => {
@@ -677,18 +799,34 @@ window.__ModuleLoader__.load({
         const css = REGION_CSS[region]
         for (const k of ['top', 'bottom', 'left', 'right', 'width', 'height']) canvas.style[k] = ''
         for (const [k, v] of Object.entries(css)) canvas.style[k] = v
-        engine.resize()
+        lastLeftCss = null
+        refresh()
       }
+
+      // 除左侧栏的左缘动态探测：侧栏收缩/拖宽时对话区左缘随之变化
+      const refreshNoLeft = () => {
+        if (region !== 'no-left') return
+        const l = detectMainLeft()
+        const leftCss = l == null ? NO_LEFT_FALLBACK : Math.max(0, Math.round(l)) + 'px'
+        if (leftCss !== lastLeftCss) {
+          lastLeftCss = leftCss
+          canvas.style.left = leftCss
+          engine.resize()
+        }
+      }
+
+      const refresh = () => { refreshNoLeft(); engine.resize() }
       applyRegion(region)
 
-      const onResize = () => engine.resize()
+      const onResize = () => refresh()
       window.addEventListener('resize', onResize)
       const onVisibility = () => engine.setEnabled(!document.hidden && overlayEnabled)
       document.addEventListener('visibilitychange', onVisibility)
 
-      // 布局自适应：插件加载早于页面布局稳定时，首测量会量到过渡态高度（雨柱
-      // 行数偏少、盖不满屏）。ResizeObserver 盯住根节点与 body，布局一变就重测；
-      // 兜底轮询以防 body 被整体替换。引擎侧有尺寸去重，不变就零成本跳过。
+      // 布局自适应：插件加载早于页面布局稳定时，首测量会量到过渡态（雨柱行数
+      // 偏少、盖不满屏）。ResizeObserver 盯住根节点与 body，布局一变就重测；
+      // 兜底轮询防 body 被整体替换，并让侧栏收缩/拖宽实时跟随。引擎侧有尺寸
+      // 去重 + 左缘去重，没变化就零成本跳过。
       let ro = null
       if (typeof ResizeObserver !== 'undefined') {
         ro = new ResizeObserver(onResize)

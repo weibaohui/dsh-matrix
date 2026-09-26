@@ -1,6 +1,6 @@
 {
   "name": "@weibaohui/dsh-matrix",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "dsh 插件 · 黑客帝国数字雨：对话窗口铺上经典的字符雨背景——英文数字雨柱倾泻而下、白炽雨头绿身拖尾，agent 正在生成的 token 原文实时掺进雨里；雨势随 agent 活跃度起伏，透明度/速度/密度/深浅配色可调，双击切换清屏。",
   "license": "MIT",
   "keywords": [
@@ -38,7 +38,7 @@
     "cordis.patch.yml"
   ],
   "scripts": {
-    "check": "node --check src/index.js && node --check client/rain.js && node --check client/index.js",
+    "check": "node --check src/index.js && node --check client/detect.js && node --check client/rain.js && node --check client/index.js",
     "test": "node --test test/*.test.mjs",
     "build:client": "node scripts/build-client.mjs",
     "prepublishOnly": "npm run build:client && npm run check && npm test"

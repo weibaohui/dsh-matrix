@@ -142,13 +142,16 @@ const REGION_ORDER = ['no-left', 'fullscreen']
 const REGION_LABEL_KEYS = { 'no-left': 'regionNoLeft', fullscreen: 'regionFullscreen' }
 
 /**
- * 显示范围：画布不必铺满全屏。除左侧栏 = 从侧栏右缘起雨（侧栏宽度用
- * dsh-flow 同款 clamp 估算）；区域键与宿主 REGIONS 枚举一致。
+ * 显示范围：画布不必铺满全屏。除左侧栏 = 从对话区左缘起雨——左缘由
+ * detectMainLeft() 动态探测（输入框祖先链 → 侧栏元素 → main 结构，三级
+ * 递进），侧栏收缩/拖宽实时跟随；探测不到回退 clamp 估算。区域键与宿主
+ * REGIONS 枚举一致。
  */
 const REGION_CSS = {
-  'no-left': { top: '0', bottom: '0', left: 'clamp(220px, 24vw, 400px)', right: '0' },
+  'no-left': { top: '0', bottom: '0', right: '0' },
   fullscreen: { top: '0', left: '0', width: '100vw', height: '100vh' },
 }
+const NO_LEFT_FALLBACK = 'clamp(220px, 24vw, 400px)'
 
 // ── 雨布浮层 ─────────────────────────────────────────────────────────────
 
@@ -165,6 +168,7 @@ function mountOverlay() {
 
   const engine = createRain(canvas, {})
   let region = 'no-left'
+  let lastLeftCss = null
 
   // 先清后设：切换区域时旧的长宽/锚点不能残留
   const applyRegion = (r) => {
@@ -172,18 +176,34 @@ function mountOverlay() {
     const css = REGION_CSS[region]
     for (const k of ['top', 'bottom', 'left', 'right', 'width', 'height']) canvas.style[k] = ''
     for (const [k, v] of Object.entries(css)) canvas.style[k] = v
-    engine.resize()
+    lastLeftCss = null
+    refresh()
   }
+
+  // 除左侧栏的左缘动态探测：侧栏收缩/拖宽时对话区左缘随之变化
+  const refreshNoLeft = () => {
+    if (region !== 'no-left') return
+    const l = detectMainLeft()
+    const leftCss = l == null ? NO_LEFT_FALLBACK : Math.max(0, Math.round(l)) + 'px'
+    if (leftCss !== lastLeftCss) {
+      lastLeftCss = leftCss
+      canvas.style.left = leftCss
+      engine.resize()
+    }
+  }
+
+  const refresh = () => { refreshNoLeft(); engine.resize() }
   applyRegion(region)
 
-  const onResize = () => engine.resize()
+  const onResize = () => refresh()
   window.addEventListener('resize', onResize)
   const onVisibility = () => engine.setEnabled(!document.hidden && overlayEnabled)
   document.addEventListener('visibilitychange', onVisibility)
 
-  // 布局自适应：插件加载早于页面布局稳定时，首测量会量到过渡态高度（雨柱
-  // 行数偏少、盖不满屏）。ResizeObserver 盯住根节点与 body，布局一变就重测；
-  // 兜底轮询以防 body 被整体替换。引擎侧有尺寸去重，不变就零成本跳过。
+  // 布局自适应：插件加载早于页面布局稳定时，首测量会量到过渡态（雨柱行数
+  // 偏少、盖不满屏）。ResizeObserver 盯住根节点与 body，布局一变就重测；
+  // 兜底轮询防 body 被整体替换，并让侧栏收缩/拖宽实时跟随。引擎侧有尺寸
+  // 去重 + 左缘去重，没变化就零成本跳过。
   let ro = null
   if (typeof ResizeObserver !== 'undefined') {
     ro = new ResizeObserver(onResize)
