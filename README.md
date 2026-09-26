@@ -7,13 +7,13 @@
 
 ## 效果演示
 
-![demo：满屏字符雨 · 对话内容透过雨布 · 右上角设置面板实时调参](https://raw.githubusercontent.com/weibaohui/dsh-matrix/main/dsh-matrix/docs/demo.gif)
+![demo：满屏字符雨 · 对话内容透过雨布 · 右上角设置面板实时调参](https://cdn.jsdelivr.net/gh/weibaohui/dsh-matrix@main/docs/demo.gif)
 
 | | |
 |---|---|
-| ![默认 30% 透明度](https://raw.githubusercontent.com/weibaohui/dsh-matrix/main/dsh-matrix/docs/rain-dark.png) | ![浅色主题 45% 透明度](https://raw.githubusercontent.com/weibaohui/dsh-matrix/main/dsh-matrixdocs/rain-light.png) |
+| ![默认 30% 透明度](https://cdn.jsdelivr.net/gh/weibaohui/dsh-matrix@main/docs/rain-dark.png) | ![浅色主题 45% 透明度](https://cdn.jsdelivr.net/gh/weibaohui/dsh-matrix@main/docs/rain-light.png) |
 | *默认 30% 透明度：氛围与可读性兼顾* | *浅色主题下照样清透* |
-| ![70% 透明度 × 1.3 密度](https://raw.githubusercontent.com/weibaohui/dsh-matrix/main/dsh-matrix/docs/rain-strong.png) | |
+| ![70% 透明度 × 1.3 密度](https://cdn.jsdelivr.net/gh/weibaohui/dsh-matrix@main/docs/rain-strong.png) | |
 | *0.7 透明度 + 1.3 密度：正经矩阵* | |
 
 ## 核心功能
