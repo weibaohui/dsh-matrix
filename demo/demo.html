@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dsh-matrix · 数字雨预览</title>
+<style>
+  :root { color-scheme: dark }
+  * { box-sizing: border-box }
+  body { margin: 0; font: 14px/1.6 -apple-system, "PingFang SC", sans-serif; background: #1e1f24; color: #d7d9e0 }
+  body.light { background: #f5f5f7; color: #333 }
+  .app { display: grid; grid-template-columns: 220px 1fr; height: 100vh }
+  aside { border-right: 1px solid rgba(127,127,127,.25); padding: 16px }
+  aside h2 { font-size: 13px; opacity: .6; margin: 0 0 8px }
+  aside .item { padding: 8px 10px; border-radius: 8px; opacity: .85; font-size: 13px }
+  aside .item.active { background: rgba(127,127,127,.18) }
+  main { display: flex; flex-direction: column }
+  header { padding: 12px 20px; border-bottom: 1px solid rgba(127,127,127,.25); font-size: 13px; opacity: .8 }
+  .chat { flex: 1; overflow: auto; padding: 20px 28px; max-width: 860px }
+  .msg { margin-bottom: 18px; padding: 12px 16px; border-radius: 12px; background: rgba(127,127,127,.12); font-size: 13.5px }
+  .msg.user { margin-left: 15%; }
+  .msg.agent { margin-right: 8%; }
+  pre { background: rgba(0,0,0,.35); padding: 12px 14px; border-radius: 8px; overflow: auto; font-size: 12.5px }
+  body.light pre { background: rgba(0,0,0,.08) }
+  .composer { margin: 0 28px 20px; padding: 12px 16px; border: 1px solid rgba(127,127,127,.35); border-radius: 12px; opacity: .6; font-size: 13px }
+  .panel { position: fixed; right: 16px; top: 16px; z-index: 10; background: rgba(20,20,24,.9); border: 1px solid rgba(127,127,127,.4); border-radius: 12px; padding: 12px 14px; width: 240px; font-size: 12px; color: #ddd }
+  .panel label { display: flex; align-items: center; gap: 8px; margin: 6px 0 }
+  .panel input[type=range] { flex: 1 }
+  .panel select { background: #2a2b30; color: inherit; border: 1px solid rgba(127,127,127,.4); border-radius: 6px; padding: 2px 6px }
+  canvas[data-demo-rain] { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h2>会话</h2>
+    <div class="item active">黑客帝国插件</div>
+    <div class="item">重构 plugin-kit</div>
+    <div class="item">README 翻译</div>
+  </aside>
+  <main>
+    <header>dsh-matrix · 数字雨预览（对话内容透过雨布，拖动右侧滑杆调透明度）</header>
+    <div class="chat">
+      <div class="msg user">我想给对话窗口加一层黑客帝国的字符雨背景。</div>
+      <div class="msg agent">收到。雨布用 destination-out 逐帧擦除拖尾，画布保持全透明，对话内容透过来；透明度由 canvas.style.opacity 统一控制：</div>
+      <div class="msg agent"><pre>const erase = 1 - Math.pow(0.1, dt / TRAIL_MS)
+ctx.globalCompositeOperation = 'destination-out'
+ctx.fillStyle = `rgba(0,0,0,${erase})`
+ctx.fillRect(0, 0, w, h)
+ctx.globalCompositeOperation = 'source-over'</pre></div>
+      <div class="msg user">Wake up, Neo…</div>
+      <div class="msg agent">The Matrix has you. Follow the white rabbit. 🐇</div>
+    </div>
+    <div class="composer">给 dsh 发送消息…</div>
+  </main>
+</div>
+
+<div class="panel">
+  <label><input type="checkbox" id="enabled" checked> 下雨</label>
+  <label>透明度 <input type="range" id="opacity" min="0.05" max="1" step="0.05" value="0.3"></label>
+  <label>速度 <input type="range" id="speed" min="0.3" max="2.5" step="0.1" value="1"></label>
+  <label>密度 <input type="range" id="density" min="0.5" max="2" step="0.1" value="1"></label>
+  <label>字号 <input type="range" id="fontSize" min="12" max="24" step="1" value="16"></label>
+  <label>暗色主题 <select id="themeDark">
+    <option value="classic">经典绿</option>
+    <option value="amber">琥珀</option>
+    <option value="cyan">赛博青</option>
+    <option value="magenta">品红</option>
+  </select></label>
+  <label>亮色主题 <select id="themeLight">
+    <option value="amber">琥珀</option>
+    <option value="classic">经典绿</option>
+    <option value="cyan">赛博青</option>
+    <option value="magenta">品红</option>
+  </select></label>
+  <label><input type="checkbox" id="light"> 浅色页面</label>
+  <label><button id="busy" style="font-size:12px;padding:3px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit;cursor:pointer">模拟 agent 活动</button></label>
+</div>
+
+<script src="../client/rain.js"></script>
+<script>
+  const canvas = document.createElement('canvas')
+  canvas.setAttribute('data-demo-rain', '')
+  document.body.appendChild(canvas)
+  const rain = createRain(canvas, {})
+  rain.setOpacity(0.3)
+  rain.setEnabled(true)
+  window.addEventListener('resize', () => rain.resize())
+
+  const $ = (id) => document.getElementById(id)
+  $('enabled').onchange = (e) => rain.setEnabled(e.target.checked)
+  $('opacity').oninput = (e) => rain.setOpacity(Number(e.target.value))
+  $('speed').oninput = (e) => rain.setSpeed(Number(e.target.value))
+  $('density').oninput = (e) => rain.setDensity(Number(e.target.value))
+  $('fontSize').oninput = (e) => rain.setFontSize(Number(e.target.value))
+  const applyDemoTheme = () => rain.setTheme($('light').checked ? $('themeLight').value : $('themeDark').value)
+  $('themeDark').onchange = applyDemoTheme
+  $('themeLight').onchange = applyDemoTheme
+  $('light').onchange = (e) => { document.body.classList.toggle('light', e.target.checked); applyDemoTheme() }
+
+  // 模拟 agent 活动：boost 1 → 1.6 → 1.9 → 回落，每档停 2.5s（插件里由 SSE 驱动）
+  let busyTimer = null
+  $('busy').onclick = () => {
+    if (busyTimer) { clearInterval(busyTimer); busyTimer = null; rain.setBoost(1); rain.setFlowing(!cont0); return }
+    rain.setFlowing(true)
+    const seq = [1.3, 1.6, 1.9, 1.6, 1.3, 1]
+    let i = 0
+    busyTimer = setInterval(() => {
+      rain.setBoost(seq[i % seq.length])
+      i += 1
+      if (i >= seq.length) { clearInterval(busyTimer); busyTimer = null; if (cont0) rain.setFlowing(false) }
+    }, 2500)
+  }
+
+  // URL 参数直达：?light=1&opacity=0.6&speed=1.5&density=1.4&fontSize=20&theme=cyan
+  const q = new URLSearchParams(location.search)
+
+  // 性能探针：每秒把引擎 stats 写进 DOM，无头测量用（--dump-dom 读取）
+  const probe = document.createElement('div')
+  probe.id = 'perf'
+  probe.style.display = 'none'
+  document.body.appendChild(probe)
+  setInterval(() => { probe.textContent = JSON.stringify(rain.stats()) }, 1000)
+  const applyParam = (key, fn, el) => {
+    if (!q.has(key)) return
+    const v = q.get(key)
+    fn(key === 'light' ? v === '1' : Number.isNaN(Number(v)) ? v : Number(v))
+    if (el) el.value = v
+    if (el && el.type === 'checkbox') el.checked = v === '1'
+  }
+  applyParam('opacity', (v) => rain.setOpacity(v), $('opacity'))
+  applyParam('speed', (v) => rain.setSpeed(v), $('speed'))
+  applyParam('density', (v) => rain.setDensity(v), $('density'))
+  applyParam('fontSize', (v) => rain.setFontSize(v), $('fontSize'))
+  applyParam('light', (v) => document.body.classList.toggle('light', v), $('light'))
+  // 主题参数：theme= 双色同设，themeDark=/themeLight= 各设各的
+  if (q.has('theme')) { $('themeDark').value = q.get('theme'); $('themeLight').value = q.get('theme') }
+  if (q.has('themeDark')) $('themeDark').value = q.get('themeDark')
+  if (q.has('themeLight')) $('themeLight').value = q.get('themeLight')
+  applyDemoTheme()
+
+  // 显示范围：?region=no-left 时雨从假会话栏（220px）右缘开始，插件同款
+  if (q.get('region') === 'no-left') {
+    canvas.style.left = '220px'
+    canvas.style.width = 'auto'
+    rain.resize()
+  }
+  if (q.get('feed') === '0') rain.setFeed(false)
+
+  // 持续下雨：?continuous=0 时空闲排空停歇（配合「模拟 agent 活动」按钮演示）
+  const cont0 = q.get('continuous') === '0'
+  rain.setFlowing(!cont0)
+
+  // 双击清屏：清空雨布，10s 后重布恢复（插件里时长可配 10/20/30s）
+  document.addEventListener('dblclick', () => {
+    rain.stopAndClear()
+    setTimeout(() => { rain.reset(); rain.setFlowing(!cont0) }, 10000)
+  })
+
+  // 模拟对话原文掺雨：插件里由宿主 SSE 推送，demo 里直接周期喂入
+  const sample = 'WAKE UP NEO... THE MATRIX HAS YOU... KNOCK KNOCK NEO... 01101000 01101001 01000111...'
+  setInterval(() => rain.pushText(sample), 1500)
+</script>
+</body>
+</html>

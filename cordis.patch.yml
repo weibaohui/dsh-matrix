@@ -1,0 +1,12 @@
+# dsh-plugin-dsh-matrix bundle patch: contributes the plugin row into the
+# host composition when this package is installed via `dsh plugin add`.
+#
+# The plugin is HOST-PLANE only in the thinnest sense: the host half persists
+# the rain configuration (storageDomain) and serves it over
+# GET/POST /dsh-matrix/api/config; all rendering happens in the client half
+# (canvas overlay in the web shell). It must therefore land in the host
+# composition (this insert), never inside an agent preset.
+
+- insert:
+    - id: dsh-matrix
+      name: '@weibaohui/dsh-matrix'
