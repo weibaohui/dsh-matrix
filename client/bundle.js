@@ -895,11 +895,12 @@ window.__ModuleLoader__.load({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(next),
-        }).then(() => {
+        }).then((r) => {
+          if (!r.ok) throw new Error('bad status')
           setSavedTick(true)
           setTimeout(() => setSavedTick(false), 1500)
           if (window.__dshMatrix) window.__dshMatrix.applyConfig(next)
-        }).catch(() => setLoadError(true))
+        }).catch(() => load()) // 保存失败不假装成功：回读宿主真实配置，面板弹回真实状态
       }
 
       if (config === null && !loadError) return h('p', { style: { opacity: 0.7 } }, t('loading'))
