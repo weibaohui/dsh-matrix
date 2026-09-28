@@ -7,6 +7,8 @@
  * platform module; everything else is inlined). rain.js lands in the same
  * factory scope ahead of index.js, so the glue code references createRain /
  * THEMES as bare names — dsh-fireworks build-client.mjs 同款内联方案。
+ * detect.js 不再内联：会话列插槽方案落地后浏览器入口已不测宽（纯函数库仅
+ * 供离线测试与复用）。
  *
  * Stripped from the helper source: the `'use strict'` prologue and the
  * node-only `module.exports` guard line (it would clobber the factory's
@@ -28,11 +30,10 @@ const helper = (name) => readFileSync(join(here, '..', 'client', name), 'utf8')
   .replace(/^if \(typeof module !== 'undefined' && module\.exports\) module\.exports = .+$/gm, '')
   .trim()
 
-const detect = helper('detect.js')
 const rain = helper('rain.js')
 const source = readFileSync(join(here, '..', 'client', 'index.js'), 'utf8').trim()
 
-const banner = `/* Generated from client/detect.js + client/rain.js + client/index.js by scripts/build-client.mjs — do not edit by hand.
+const banner = `/* Generated from client/rain.js + client/index.js by scripts/build-client.mjs — do not edit by hand.
  * Regenerate with: npm run build:client
  */
 window.__ModuleLoader__.load({
@@ -55,6 +56,6 @@ const indent = (code) => code
   .map((line) => (line.length === 0 ? line : '    ' + line))
   .join('\n')
 
-const body = `${indent(detect)}\n\n${indent(rain)}\n\n${indent(source)}`
+const body = `${indent(rain)}\n\n${indent(source)}`
 writeFileSync(join(here, '..', 'client', 'bundle.js'), banner + body + footer)
 console.log(`built client/bundle.js (${Buffer.byteLength(banner + body + footer, 'utf8')} bytes)`)
