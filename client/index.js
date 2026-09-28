@@ -425,9 +425,10 @@ module.exports = {
     const overlay = mountOverlay()
     ctx.effect(() => () => overlay.dispose(), 'dsh-matrix: overlay')
 
-    // ── 深浅主题自适应：采样页面底色，深浅各自用自己配的雨色 ────────────
-    // （烟花 detectTone 同款：画布 pointer-events:none，elementFromPoint 穿透
-    //   命中下层元素，沿父链找第一个非透明背景色，亮于阈值 → light）
+    // ── 深浅主题自适应（事件驱动，无轮询）───────────────────────────────
+    // 主判据走 dsh 官方主题属性（html[data-ds-theme-source] / body[data-ds-dark-theme]），
+    // 属性缺席才回退烟花同款 elementFromPoint 采样；MutationObserver 即时跟随
+    // 宿主切主题，matchMedia 兜住 system 模式下的系统深浅切换。
     let tone = 'dark'
     const applyTheme = () => {
       if (!currentConfig) return
@@ -437,6 +438,12 @@ module.exports = {
     }
     const detectTone = () => {
       try {
+        const root = document.documentElement
+        const body = document.body
+        const source = (root.getAttribute('data-ds-theme-source') || '').toLowerCase()
+        if (source === 'dark') return 'dark'
+        if (source === 'light') return 'light'
+        if (body && body.hasAttribute('data-ds-dark-theme')) return 'dark'
         let el = document.elementFromPoint(Math.floor(innerWidth / 2), Math.floor(innerHeight * 0.55))
         let guard = 0
         while (el && guard++ < 12) {
@@ -461,8 +468,18 @@ module.exports = {
         applyTheme()
       }
     }
-    const toneTimer = setInterval(applyTone, 3000)
-    ctx.effect(() => () => clearInterval(toneTimer), 'dsh-matrix: tone')
+    applyTone()
+    try {
+      const toneMo = new MutationObserver(applyTone)
+      toneMo.observe(document.documentElement, { attributes: true })
+      if (document.body) toneMo.observe(document.body, { attributes: true })
+      const toneMq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')
+      if (toneMq && toneMq.addEventListener) toneMq.addEventListener('change', applyTone)
+      ctx.effect(() => () => {
+        toneMo.disconnect()
+        if (toneMq && toneMq.removeEventListener) toneMq.removeEventListener('change', applyTone)
+      }, 'dsh-matrix: tone')
+    } catch { /* 保留挂载时探测结果 */ }
 
     // ── 配置装载 ───────────────────────────────────────────────────────
     const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
