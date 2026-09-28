@@ -556,30 +556,39 @@ module.exports = {
       .then((cfg) => applyConfig(cfg || {}))
       .catch(() => applyConfig({}))
 
-    // ── SSE 活动流：level → boost（雨随 agent 忙闲起伏）─────────────────
-    let es = null
+    // ── 事件订阅：枢纽优先（dsh-plugin-kit ≥0.4 的共享单连接），缺席回退
+    // 自有 SSE——独立安装不受影响。level → boost（雨随 agent 忙闲起伏）；
+    // token 原文掺进雨柱字符池 ──────────────────────────────────────────
+    const onEvent = (ev) => {
+      if (ev && ev.kind === 'activity') {
+        if (typeof ev.level === 'number') activityLevel = Math.max(0, ev.level)
+        if (typeof ev.intensity === 'number') activityIntensity = Math.min(1, Math.max(0, ev.intensity))
+        else if (typeof ev.level === 'number') activityIntensity = Math.min(1, activityLevel / 3) // 旧宿主兜底
+        applyBoost()
+        applyAll()
+      } else if (ev && ev.kind === 'text' && typeof ev.text === 'string') {
+        // agent 流式输出的 token 原文 → 掺进雨柱字符池
+        overlay.engine.pushText(ev.text)
+      }
+    }
     let liveState = 'connecting'
-    if (typeof EventSource !== 'undefined') {
+    let es = null
+    const hubOff = PluginKit.connectEvents('dsh-matrix', (data) => {
+      liveState = 'live'
+      onEvent(data)
+    }, (s) => { liveState = s })
+    if (!hubOff && typeof EventSource !== 'undefined') {
       es = new EventSource(API + '/stream')
       es.onopen = () => { liveState = 'live' }
       es.onerror = () => { liveState = 'connecting' } // EventSource 自动重连
       es.onmessage = (msg) => {
-        try {
-          const ev = JSON.parse(msg.data)
-          if (ev && ev.kind === 'activity') {
-            if (typeof ev.level === 'number') activityLevel = Math.max(0, ev.level)
-            if (typeof ev.intensity === 'number') activityIntensity = Math.min(1, Math.max(0, ev.intensity))
-            else if (typeof ev.level === 'number') activityIntensity = Math.min(1, activityLevel / 3) // 旧宿主兜底
-            applyBoost()
-            applyAll()
-          } else if (ev && ev.kind === 'text' && typeof ev.text === 'string') {
-            // agent 流式输出的 token 原文 → 掺进雨柱字符池
-            overlay.engine.pushText(ev.text)
-          }
-        } catch { /* 坏帧忽略 */ }
+        try { liveState = 'live'; onEvent(JSON.parse(msg.data)) } catch { /* 坏帧忽略 */ }
       }
     }
-    ctx.effect(() => () => { if (es) try { es.close() } catch {} }, 'dsh-matrix: sse')
+    ctx.effect(() => () => {
+      if (hubOff) try { hubOff() } catch {}
+      if (es) try { es.close() } catch {}
+    }, 'dsh-matrix: events')
 
     // ── 双击切换：下雨中双击清屏，清屏中双击恢复下雨 ────────────────────
     const toastEl = document.createElement('div')

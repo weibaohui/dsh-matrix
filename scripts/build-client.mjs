@@ -20,6 +20,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { createRequire } from 'node:module'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const pkg = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'))
@@ -30,6 +31,7 @@ const helper = (name) => readFileSync(join(here, '..', 'client', name), 'utf8')
   .replace(/^if \(typeof module !== 'undefined' && module\.exports\) module\.exports = .+$/gm, '')
   .trim()
 
+const kitClient = readFileSync(createRequire(import.meta.url).resolve('@weibaohui/dsh-plugin-kit/client/source.js'), 'utf8').replace(/^'use strict'\s*/, '').trim()
 const rain = helper('rain.js')
 const source = readFileSync(join(here, '..', 'client', 'index.js'), 'utf8').trim()
 
@@ -56,6 +58,6 @@ const indent = (code) => code
   .map((line) => (line.length === 0 ? line : '    ' + line))
   .join('\n')
 
-const body = `${indent(rain)}\n\n${indent(source)}`
+const body = `${indent(kitClient)}\n\n${indent(rain)}\n\n${indent(source)}`
 writeFileSync(join(here, '..', 'client', 'bundle.js'), banner + body + footer)
 console.log(`built client/bundle.js (${Buffer.byteLength(banner + body + footer, 'utf8')} bytes)`)

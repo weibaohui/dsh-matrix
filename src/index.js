@@ -13,8 +13,13 @@
  *      agent 忙得越欢，雨下得越急。客户端 reactive 开关关闭时忽略。
  *
  * 路由信任栅栏沿用 dsh-flow 同款：connection.requestRejection 的
- * Host/Origin 检查 + 浏览器认证。零 npm 运行时依赖。
+ * Host/Origin 检查 + 浏览器认证。除可选的 dsh-plugin-kit 事件枢纽外零 npm 运行时依赖。
  */
+
+// 共享事件推送枢纽（@weibaohui/dsh-plugin-kit ≥0.4）：库缺席（未安装）时为
+// undefined，广播回退自有 SSE 通道——独立安装不受影响。
+let ensureHostHub
+try { ({ ensureHostHub } = require('@weibaohui/dsh-plugin-kit')) } catch { /* 库缺席 */ }
 
 const DEFAULT_CONFIG = {
   enabled: true,
@@ -191,6 +196,11 @@ module.exports = {
     let seq = 0
 
     const broadcast = (payload) => {
+      // 共享事件枢纽（dsh-plugin-kit ≥0.4）在就优先发布；库缺席回退自有 SSE
+      try {
+        const hub = ensureHostHub && ensureHostHub(ctx, { webServer: ctx.webServer, connection: ctx.connection })
+        if (hub && typeof hub.publish === 'function') hub.publish('dsh-matrix', payload)
+      } catch { /* 枢纽缺席不影响自有通道 */ }
       if (subscribers.size === 0) return
       seq += 1
       const frame = `id: ${seq}\ndata: ${JSON.stringify(Object.assign({ seq }, payload))}\n\n`
