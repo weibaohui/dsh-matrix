@@ -34,6 +34,17 @@ const ZH = {
   nav: '黑客帝国',
   title: '黑客帝国数字雨',
   intro: '对话窗口铺上经典的黑客帝国字符雨背景——英文与数字的雨柱倾泻而下，白炽雨头绿身拖尾，agent 正在生成的 token 原文实时掺进雨里。字符在窗口上流动，代码在雨中生长。',
+  mode: '模式',
+  modeHint: '显示内容：黑客帝国=英文数字，道法修仙=汉字篆体（token 汉字落进雨里），甲骨卜辞=商代甲骨文折线。模式、下方配色、金边发光三者独立，可自由组合。',
+  modeMatrix: '黑客帝国',
+  modeXian: '道法修仙',
+  modeOracle: '甲骨卜辞',
+  modeXianNote: '雨字为汉字篆体（嵌入 LXGW 霞鹜篆书 OFL；装了方正小篆/峄山碑篆系统字体会优先用之）。颜色跟随下方配色，金边发光是独立开关。',
+  modeOracleNote: '雨字为商代甲骨文折线字形（嵌入 aylqs2025 数据集 CC-BY 4.0），卜辞占卜祭祀语感。颜色跟随下方配色，金边发光是独立开关。',
+  zhuyin: '注音标注',
+  zhuyinHint: '修仙/甲骨模式在雨字上方标注老式注音符号（ㄅㄆㄇㄈ）——旧字典的注法。注音字母本身取自古字，与篆体甲骨一脉。',
+  glow: '金边发光',
+  glowHint: '雨字描边 + 外发光晕：配鎏金即金光，配经典绿即绿光——与模式、配色独立组合；关闭则是纯净双色字。',
   enabled: '数字雨',
   enabledHint: '关闭后雨布收起，界面恢复原样。',
   opacity: '透明度',
@@ -45,13 +56,16 @@ const ZH = {
   fontSize: '字号',
   fontSizeHint: '字符大小（12–24px），决定雨柱粗细与行高。',
   themeDark: '暗色配色',
-  themeDarkHint: 'UI 深色时的雨色。经典绿是母体原色；琥珀/青/品红是其它舰船的终端。',
+  themeDarkHint: 'UI 深色时的雨色，所有模式生效。经典绿是母体原色；琥珀/青/品红是其它舰船的终端；鎏金配金边发光即金光。',
   themeLight: '亮色配色',
-  themeLightHint: 'UI 浅色时的雨色——白底上琥珀比纯绿更压得住。切换深浅实时跟随。',
+  themeLightHint: 'UI 浅色时的雨色，所有模式生效——白底上琥珀比纯绿更压得住。切换深浅实时跟随。',
   themeClassic: '经典绿',
   themeAmber: '琥珀',
   themeCyan: '赛博青',
   themeMagenta: '品红',
+  themeGold: '鎏金',
+  themeRainbowCycle: '七彩轮转',
+  themeRainbowRandom: '七彩随机',
   region: '显示范围',
   regionHint: '除左侧栏：会话列表保持干净，其余区域下雨（默认）。',
   regionFullscreen: '全屏',
@@ -88,6 +102,17 @@ const EN = {
   nav: 'Matrix Rain',
   title: 'Matrix Digital Rain',
   intro: 'The classic Matrix digital rain as your chat window backdrop — columns of letters and digits pouring down, white-hot heads over green fading trails, with the agent\'s streaming tokens woven into the rain. Characters flow across the window; code grows in the rain.',
+  mode: 'Mode',
+  modeHint: 'Display content: Matrix = letters & digits, Daoist cultivation = seal-script hanzi (token hanzi woven into the rain), Oracle bone = Shang-dynasty oracle glyphs. Mode, color below, and the glow toggle are independent — combine freely.',
+  modeMatrix: 'Matrix',
+  modeXian: 'Daoist cultivation',
+  modeOracle: 'Oracle bone',
+  modeXianNote: 'Glyphs are seal-script hanzi (embeds LXGW Seal, OFL; a locally-installed 方正小篆/峄山碑 seal font takes priority). Color follows the theme dropdowns; the glow toggle is independent.',
+  modeOracleNote: 'Glyphs are Shang-dynasty oracle-bone polyline forms (embeds the aylqs2025 dataset, CC-BY 4.0), divination-themed. Color follows the theme dropdowns; the glow toggle is independent.',
+  zhuyin: 'Zhuyin annotation',
+  zhuyinHint: 'Cultivation/Oracle modes show a line of old-style zhuyin symbols (ㄅㄆㄇㄈ) above each rain glyph — the pre-pinyin dictionary notation. The zhuyin letters themselves derive from ancient characters.',
+  glow: 'Glow & stroke',
+  glowHint: 'Stroke + outer glow on each glyph: pair with Gold for the golden light, with Classic green for a green one — independent of mode and color; off gives clean two-tone glyphs.',
   enabled: 'Digital rain',
   enabledHint: 'When off, the rain canvas is hidden entirely.',
   opacity: 'Opacity',
@@ -99,13 +124,16 @@ const EN = {
   fontSize: 'Font size',
   fontSizeHint: 'Glyph size (12–24px); sets column thickness and row height.',
   themeDark: 'Dark-mode theme',
-  themeDarkHint: 'Rain color while the UI is dark. Classic green is the Matrix; amber/cyan/magenta are other ships’ terminals.',
+  themeDarkHint: 'Rain color while the UI is dark, applies to every mode. Classic green is the Matrix; amber/cyan/magenta are other ships’ terminals; Gold plus glow gives the golden light.',
   themeLight: 'Light-mode theme',
-  themeLightHint: 'Rain color while the UI is light — amber holds up better than pure green on white. Follows theme switches live.',
+  themeLightHint: 'Rain color while the UI is light, applies to every mode — amber holds up better than pure green on white. Follows theme switches live.',
   themeClassic: 'Classic green',
   themeAmber: 'Amber',
   themeCyan: 'Cyber cyan',
   themeMagenta: 'Magenta',
+  themeGold: 'Gold',
+  themeRainbowCycle: 'Rainbow cycle',
+  themeRainbowRandom: 'Rainbow random',
   region: 'Display region',
   regionHint: 'No left rail: keep the session list clean, rain everywhere else (default).',
   regionFullscreen: 'Fullscreen',
@@ -141,8 +169,12 @@ const EN = {
 const LOCALE_DICT = { zh: ZH, en: EN }
 const API = '/dsh-matrix/api'
 
-const THEME_ORDER = ['classic', 'amber', 'cyan', 'magenta']
-const THEME_LABEL_KEYS = { classic: 'themeClassic', amber: 'themeAmber', cyan: 'themeCyan', magenta: 'themeMagenta' }
+const THEME_ORDER = ['classic', 'amber', 'cyan', 'magenta', 'gold', 'rainbow-cycle', 'rainbow-random']
+const THEME_LABEL_KEYS = { classic: 'themeClassic', amber: 'themeAmber', cyan: 'themeCyan', magenta: 'themeMagenta', gold: 'themeGold', 'rainbow-cycle': 'themeRainbowCycle', 'rainbow-random': 'themeRainbowRandom' }
+
+/** 渲染模式合法值（宿主 MODES 同名键）。 */
+const MODE_ORDER = ['matrix', 'xian', 'oracle']
+const MODE_LABEL_KEYS = { matrix: 'modeMatrix', xian: 'modeXian', oracle: 'modeOracle' }
 
 /** 显示范围合法值（宿主 REGIONS 同名键）。 */
 const REGION_ORDER = ['no-left', 'fullscreen']
@@ -331,7 +363,7 @@ function MatrixPanel({ t }) {
   const themeRow = (key, labelKey, hintKey) => h('div', { style: row },
     h('span', { style: label }, t(labelKey), h('span', { style: hint }, t(hintKey))),
     h('select', {
-      value: config[key] || 'classic',
+      value: config[key] || 'rainbow-cycle',
       style: { fontSize: '12px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--dsw-alias-border-l2, rgba(127,127,127,.3))', background: 'transparent', color: 'inherit' },
       onChange: (e) => save(Object.assign({}, config, { [key]: e.target.value })),
     },
@@ -344,6 +376,18 @@ function MatrixPanel({ t }) {
     h('p', { style: { opacity: 0.75, fontSize: '13px', lineHeight: 1.6 } }, t('intro')),
 
     reducedMotion && !config.ignoreReducedMotion && h('p', { style: { color: 'var(--dsw-alias-label-warning, #d19a66)', fontSize: '12px' } }, t('reducedMotion')),
+
+    // 模式：黑客帝国 / 道法修仙
+    h('div', { style: row },
+      h('span', { style: label }, t('mode'), h('span', { style: hint }, t('modeHint'))),
+      h('select', {
+        value: config.mode || 'oracle',
+        style: { fontSize: '12px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--dsw-alias-border-l2, rgba(127,127,127,.3))', background: 'transparent', color: 'inherit' },
+        onChange: (e) => save(Object.assign({}, config, { mode: e.target.value })),
+      },
+        MODE_ORDER.map((name) => h('option', { key: name, value: name }, t(MODE_LABEL_KEYS[name]))))),
+    config.mode === 'xian' && h('p', { style: { fontSize: '12px', opacity: 0.7, color: 'var(--dsw-alias-label-warning, #d19a66)', margin: '2px 0 6px' } }, t('modeXianNote')),
+    config.mode === 'oracle' && h('p', { style: { fontSize: '12px', opacity: 0.7, color: 'var(--dsw-alias-label-warning, #d19a66)', margin: '2px 0 6px' } }, t('modeOracleNote')),
 
     // 总开关
     h('div', { style: row },
@@ -383,6 +427,22 @@ function MatrixPanel({ t }) {
       h('input', {
         type: 'checkbox', checked: config.continuous !== false,
         onChange: (e) => save(Object.assign({}, config, { continuous: e.target.checked })),
+      })),
+
+    // 注音标注（修仙/甲骨模式生效）
+    h('div', { style: row },
+      h('span', { style: label }, t('zhuyin'), h('span', { style: hint }, t('zhuyinHint'))),
+      h('input', {
+        type: 'checkbox', checked: config.zhuyin !== false,
+        onChange: (e) => save(Object.assign({}, config, { zhuyin: e.target.checked })),
+      })),
+
+    // 金边发光（所有模式生效，与配色独立叠加）
+    h('div', { style: row },
+      h('span', { style: label }, t('glow'), h('span', { style: hint }, t('glowHint'))),
+      h('input', {
+        type: 'checkbox', checked: config.glow !== false,
+        onChange: (e) => save(Object.assign({}, config, { glow: e.target.checked })),
       })),
 
     // 双击切换（纯提示，无控件）
@@ -541,6 +601,9 @@ module.exports = {
     const applyConfig = (cfg) => {
       if (!cfg || typeof cfg !== 'object') return
       currentConfig = cfg
+      overlay.engine.setMode(typeof cfg.mode === 'string' ? cfg.mode : 'oracle')
+      overlay.engine.setZhuyin(cfg.zhuyin !== false)
+      overlay.engine.setGlow(cfg.glow !== false)
       overlay.engine.setOpacity(typeof cfg.opacity === 'number' ? cfg.opacity : 0.3)
       overlay.engine.setSpeed(typeof cfg.speed === 'number' ? cfg.speed : 1)
       overlay.engine.setDensity(typeof cfg.density === 'number' ? cfg.density : 1.3)

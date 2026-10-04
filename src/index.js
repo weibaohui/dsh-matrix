@@ -22,13 +22,17 @@ let ensureHostHub
 try { ({ ensureHostHub } = require('@weibaohui/dsh-plugin-kit')) } catch { /* 库缺席 */ }
 
 const DEFAULT_CONFIG = {
+  v: 7,                    // 配置 schema 版本：<7 的存量载入时做一次性默认切换迁移
   enabled: true,
   opacity: 0.3,            // 0.05..1 画布整体透明度——雨中看代码的关键旋钮
   speed: 1,                // 0.3..2.5 雨柱下落速度倍率
   density: 1.3,            // 0.5..2 雨柱密度（列距 = 字号 / density）
   fontSize: 16,            // 12..24 字号（决定雨柱粗细与行高）
-  themeDark: 'classic',    // 暗色 UI 的雨色（classic | amber | cyan | magenta）
-  themeLight: 'amber',     // 亮色 UI 的雨色——白底上琥珀比纯绿更压得住
+  mode: 'oracle',          // 显示内容：matrix 英文数字 | xian 篆体汉字 | oracle 甲骨折线（0.7 起默认甲骨）
+  zhuyin: true,            // 汉字模式（xian/oracle）雨字上方标注音符号（旧字典注法）
+  glow: true,              // 金边发光：描边 + 外发光晕（0.7 起默认开，新默认观感的组成部分）
+  themeDark: 'rainbow-cycle',  // 暗色 UI 的雨色（0.7 起默认七彩轮转）
+  themeLight: 'rainbow-cycle', // 亮色 UI 的雨色（0.7 起默认七彩轮转）
   region: 'no-left',       // no-left 除左侧会话栏（默认） | fullscreen 全屏
   reactive: true,          // true 时雨速跟随 agent 活跃度起伏
   feed: true,              // true 时 agent 流式输出的 token 原文掺进雨柱
@@ -37,7 +41,10 @@ const DEFAULT_CONFIG = {
 }
 
 /** 配色合法值（客户端 rain.js THEMES 同名键）。 */
-const THEMES = ['classic', 'amber', 'cyan', 'magenta']
+const THEMES = ['classic', 'amber', 'cyan', 'magenta', 'gold', 'rainbow-cycle', 'rainbow-random']
+
+/** 渲染模式合法值（客户端 rain.js MODES 同名键）。 */
+const MODES = ['matrix', 'xian', 'oracle']
 
 /** 显示范围合法值（客户端 REGION_CSS 同名键）。 */
 const REGIONS = ['no-left', 'fullscreen']
@@ -117,6 +124,12 @@ function normalizeConfig(raw) {
   out.speed = clamp(raw.speed, 0.3, 2.5, out.speed)
   out.density = clamp(raw.density, 0.5, 2, out.density)
   out.fontSize = Math.round(clamp(raw.fontSize, 12, 24, out.fontSize))
+  // 渲染模式：matrix 经典英文数字雨 | xian 道法修仙金篆雨 | oracle 甲骨卜辞雨
+  if (typeof raw.mode === 'string' && MODES.includes(raw.mode)) out.mode = raw.mode
+  // 注音标注：汉字模式（xian/oracle）雨字上方标注音符号
+  if (typeof raw.zhuyin === 'boolean') out.zhuyin = raw.zhuyin
+  // 金边发光：与模式/配色正交的效果开关（0.7 起默认开）
+  if (typeof raw.glow === 'boolean') out.glow = raw.glow
   // 深浅各自配色；旧配置的单 theme 字段映射进 themeDark（升级不丢偏好）
   const pickTheme = (v, fb) => (typeof v === 'string' && THEMES.includes(v) ? v : fb)
   out.themeDark = pickTheme(raw.themeDark, pickTheme(raw.theme, out.themeDark))
@@ -161,7 +174,7 @@ module.exports = {
   inject: ['webServer', 'connection', 'storageDomain'],
 
   // 供离线测试断言；Cordis 忽略多余导出属性。
-  __internals: { normalizeConfig, DEFAULT_CONFIG, THEMES, REGIONS, activityLevel, textOfChunk, usageTokensOf, intensityOf, BUSY_EVENTS, ACTIVE_WINDOW_MS },
+  __internals: { normalizeConfig, DEFAULT_CONFIG, THEMES, MODES, REGIONS, activityLevel, textOfChunk, usageTokensOf, intensityOf, BUSY_EVENTS, ACTIVE_WINDOW_MS },
 
   apply(ctx) {
     // ── 配置持久化 ───────────────────────────────────────────────────────
@@ -185,6 +198,15 @@ module.exports = {
         // 一次性迁移：v0.1 旧默认 density=1 会被设置页整体存盘固化，
         // 存量值恰为 1 视作「从未调过」，升到新默认
         if (stored.density === 1) config.density = DEFAULT_CONFIG.density
+        // 0.7 默认切换（v 闸一次性）：存量恰为 0.6 旧默认的值视作「从未调过」，
+        // 升到 0.7 新默认（甲骨 + 七彩轮转）；用户显式改过的值原样尊重。
+        // normalizeConfig 输出恒带 v=7，存盘后本迁移不再触发，刻意改回 matrix 不被回翻
+        if (typeof stored.v !== 'number' || stored.v < DEFAULT_CONFIG.v) {
+          if (stored.mode === 'matrix') config.mode = DEFAULT_CONFIG.mode
+          if (stored.themeDark === 'classic') config.themeDark = DEFAULT_CONFIG.themeDark
+          if (stored.themeLight === 'amber') config.themeLight = DEFAULT_CONFIG.themeLight
+          config.v = DEFAULT_CONFIG.v
+        }
       }
     }).catch(() => { /* 存储不可用时用内存默认配置 */ })
     ctx.effect(() => () => {

@@ -61,18 +61,30 @@ ctx.globalCompositeOperation = 'source-over'</pre></div>
   <label>速度 <input type="range" id="speed" min="0.3" max="2.5" step="0.1" value="1"></label>
   <label>密度 <input type="range" id="density" min="0.5" max="2" step="0.1" value="1"></label>
   <label>字号 <input type="range" id="fontSize" min="12" max="24" step="1" value="16"></label>
+  <label>模式 <select id="mode">
+    <option value="matrix">黑客帝国</option>
+    <option value="xian">道法修仙</option>
+    <option value="oracle">甲骨卜辞</option>
+  </select></label>
   <label>暗色主题 <select id="themeDark">
     <option value="classic">经典绿</option>
     <option value="amber">琥珀</option>
     <option value="cyan">赛博青</option>
     <option value="magenta">品红</option>
+    <option value="gold">鎏金</option>
+    <option value="rainbow-cycle">七彩轮转</option>
+    <option value="rainbow-random">七彩随机</option>
   </select></label>
   <label>亮色主题 <select id="themeLight">
     <option value="amber">琥珀</option>
     <option value="classic">经典绿</option>
     <option value="cyan">赛博青</option>
     <option value="magenta">品红</option>
+    <option value="gold">鎏金</option>
+    <option value="rainbow-cycle">七彩轮转</option>
+    <option value="rainbow-random">七彩随机</option>
   </select></label>
+  <label><input type="checkbox" id="glow" checked> 金边发光</label>
   <label><input type="checkbox" id="light"> 浅色页面</label>
   <label><button id="busy" style="font-size:12px;padding:3px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit;cursor:pointer">模拟 agent 活动</button></label>
 </div>
@@ -98,6 +110,11 @@ ctx.globalCompositeOperation = 'source-over'</pre></div>
   $('themeDark').onchange = applyDemoTheme
   $('themeLight').onchange = applyDemoTheme
   $('light').onchange = (e) => { document.body.classList.toggle('light', e.target.checked); applyDemoTheme() }
+  // 模式：黑客帝国（英文数字雨）/ 道法修仙（汉字篆体金光雨，不用字母数字）
+  let curMode = 'oracle'
+  $('mode').onchange = (e) => { curMode = e.target.value; rain.setMode(curMode); applyDemoTheme() }
+  // 金边发光：与模式/配色独立的效果开关
+  $('glow').onchange = (e) => rain.setGlow(e.target.checked)
 
   // 模拟 agent 活动：boost 1 → 1.6 → 1.9 → 回落，每档停 2.5s（插件里由 SSE 驱动）
   let busyTimer = null
@@ -138,6 +155,12 @@ ctx.globalCompositeOperation = 'source-over'</pre></div>
   if (q.has('theme')) { $('themeDark').value = q.get('theme'); $('themeLight').value = q.get('theme') }
   if (q.has('themeDark')) $('themeDark').value = q.get('themeDark')
   if (q.has('themeLight')) $('themeLight').value = q.get('themeLight')
+  if (q.has('mode')) { $('mode').value = q.get('mode'); curMode = q.get('mode'); rain.setMode(curMode) }
+  if (q.get('glow') === '1') { $('glow').checked = true; rain.setGlow(true) }
+  // 0.7 默认：甲骨 + 七彩轮转 + 金边发光（引擎默认已如此，这里同步控件；URL 参数可覆盖）
+  if (!q.has('mode')) { $('mode').value = 'oracle'; curMode = 'oracle' }
+  if (!q.has('theme') && !q.has('themeDark')) $('themeDark').value = 'rainbow-cycle'
+  if (!q.has('theme') && !q.has('themeLight')) $('themeLight').value = 'rainbow-cycle'
   applyDemoTheme()
 
   // 显示范围：?region=no-left 时雨从对话区左缘开始——动态探测（aside 假侧栏
@@ -168,9 +191,12 @@ ctx.globalCompositeOperation = 'source-over'</pre></div>
     setTimeout(() => { rain.reset(); rain.setFlowing(!cont0) }, 10000)
   })
 
-  // 模拟对话原文掺雨：插件里由宿主 SSE 推送，demo 里直接周期喂入
-  const sample = 'WAKE UP NEO... THE MATRIX HAS YOU... KNOCK KNOCK NEO... 01101000 01101001 01000111...'
-  setInterval(() => rain.pushText(sample), 1500)
+  // 模拟对话原文掺雨：插件里由宿主 SSE 推送，demo 里直接周期喂入。
+  // 修仙模式只放行汉字（token 中的汉字落进雨里），英文数字会被丢弃
+  const sampleMatrix = 'WAKE UP NEO... THE MATRIX HAS YOU... KNOCK KNOCK NEO... 01101000 01101001 01000111...'
+  const sampleXian = '道可道非常道 名可名非常名 无名天地之始 有名万物之母 道生一一生二二生三三生万物 人法地地法天天法道道法自然 上善若水 致虚极守静笃 玄之又玄众妙之门 修性命炼精化气神还虚合道 丹炁元真 阴阳五行八卦乾坤坎离震巽艮兑 甲乙丙丁戊己庚辛壬癸 子丑寅卯辰巳午未申酉戌亥 飞升渡劫'
+  const sampleOracle = '癸未卜王贞旬无咎帝其令雨癸卯卜贞今夕其雨王占曰吉甲子卜乙丑雨丁卯卜其雨三月卜大吉王卜贞余亡祸壬申卜征伐方克癸酉卜祀祖宗示辛巳卜祈年于河吉卜兆占吉凶祸福祭祀祝祈祷圣巫史尹侯帝鬼命日月星辰光明水火木土山水火田邑宫室牛羊豕犬登降陟乎余我汝乃其之征伐戍克'
+  setInterval(() => rain.pushText(curMode === 'oracle' ? sampleOracle : (curMode === 'xian' ? sampleXian : sampleMatrix)), 1500)
 </script>
 </body>
 </html>

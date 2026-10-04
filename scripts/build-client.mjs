@@ -17,13 +17,36 @@
  * Run: `npm run build:client`
  */
 
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const pkg = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'))
+
+/**
+ * 修仙模式嵌入的篆体字体（OFL-1.1，霞鹜篆书/说文小篆）。base64 内联进 bundle，
+ * 客户端 FontFace 用 data: URL 加载——单文件自包含，不联网、不依赖宿主静态路由。
+ * 字体文件缺席（fresh checkout 未带）则注入 null，rain.js 退相对路径 / CDN 兜底。
+ * OFL 许可随包分发：client/fonts/lxgw-seal-OFL.txt。
+ */
+const sealFontPath = join(here, '..', 'client', 'fonts', 'lxgw-seal.ttf')
+const sealFontSrc = existsSync(sealFontPath)
+  ? 'data:font/ttf;base64,' + readFileSync(sealFontPath).toString('base64')
+  : null
+
+/**
+ * 甲骨文模式嵌入的字形 path 表（CC-BY 4.0，aylqs2025 数据集，polyline 折线）。
+ * client/oracle/glyphs.json 是 {字: {d, vb:[w,h]}} 的精简表（仅命中的 152 字，
+ * ~7.5KB）。构建脚本整文件注入为 __DSH_ORACLE_GLYPHS，客户端 Path2D 渲染——
+ * 单文件自包含，不联网。文件缺席则注入 null，rain.js 退 fetch 相对路径（demo）。
+ * 署名见 client/oracle/ATTRIBUTION.txt。
+ */
+const oracleGlyphsPath = join(here, '..', 'client', 'oracle', 'glyphs.json')
+const oracleGlyphs = existsSync(oracleGlyphsPath)
+  ? JSON.parse(readFileSync(oracleGlyphsPath, 'utf8'))
+  : null
 
 /** 读入 helper 源并剥掉 node-only 外壳。 */
 const helper = (name) => readFileSync(join(here, '..', 'client', name), 'utf8')
@@ -45,6 +68,8 @@ window.__ModuleLoader__.load({
     var exports = module.exports
     Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" })
     var React = require("react")
+    var __DSH_SEAL_FONT = ${JSON.stringify(sealFontSrc)}
+    var __DSH_ORACLE_GLYPHS = ${JSON.stringify(oracleGlyphs)}
 `
 
 const footer = `

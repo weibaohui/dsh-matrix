@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url)
 const Rain = require('../client/rain.js')
 const Host = require('../src/index.js')
 
-const { normalizeConfig, DEFAULT_CONFIG, THEMES: HOST_THEMES, REGIONS: HOST_REGIONS, activityLevel, textOfChunk, usageTokensOf, intensityOf, BUSY_EVENTS, ACTIVE_WINDOW_MS } = Host.__internals
+const { normalizeConfig, DEFAULT_CONFIG, THEMES: HOST_THEMES, MODES: HOST_MODES, REGIONS: HOST_REGIONS, activityLevel, textOfChunk, usageTokensOf, intensityOf, BUSY_EVENTS, ACTIVE_WINDOW_MS } = Host.__internals
 
 test('默认配置即合法配置', () => {
   assert.deepEqual(normalizeConfig(null), DEFAULT_CONFIG)
@@ -47,6 +47,13 @@ test('深浅配色各自归一，旧 theme 字段映射进 themeDark', () => {
   assert.equal(legacy.theme, undefined, '新配置不再输出旧字段')
 })
 
+test('配色 0.7 起深浅都默认七彩轮转', () => {
+  assert.equal(DEFAULT_CONFIG.themeDark, 'rainbow-cycle')
+  assert.equal(DEFAULT_CONFIG.themeLight, 'rainbow-cycle')
+  assert.equal(normalizeConfig({}).themeDark, 'rainbow-cycle')
+  assert.equal(normalizeConfig({ themeDark: 'classic' }).themeDark, 'classic', '显式经典绿尊重')
+})
+
 test('region/布尔字段只收合法值', () => {
   assert.equal(normalizeConfig({ region: 'fullscreen' }).region, 'fullscreen')
   assert.equal(normalizeConfig({ region: 'bottom-left' }).region, DEFAULT_CONFIG.region)
@@ -62,6 +69,126 @@ test('region/布尔字段只收合法值', () => {
   assert.equal(normalizeConfig({ continuous: 0 }).continuous, DEFAULT_CONFIG.continuous)
   assert.equal(normalizeConfig({ dblClickClear: 20 }).dblClickClear, undefined, '旧字段不再输出')
   assert.equal(normalizeConfig({ ignoreReducedMotion: true }).ignoreReducedMotion, true)
+})
+
+test('mode 字段 0.7 起默认 oracle，matrix 仍可选', () => {
+  assert.equal(DEFAULT_CONFIG.mode, 'oracle')
+  assert.equal(normalizeConfig({}).mode, 'oracle')
+  assert.equal(normalizeConfig({ mode: 'xian' }).mode, 'xian')
+  assert.equal(normalizeConfig({ mode: 'oracle' }).mode, 'oracle')
+  assert.equal(normalizeConfig({ mode: 'matrix' }).mode, 'matrix', 'matrix 仍是合法选项')
+  assert.equal(normalizeConfig({ mode: 'neon' }).mode, 'oracle', '未知模式回退默认')
+  assert.equal(normalizeConfig({ mode: 3 }).mode, 'oracle')
+  // 旧配置无 mode 字段 → 直接落新默认
+  assert.equal(normalizeConfig({ opacity: 0.5 }).mode, 'oracle')
+})
+
+test('宿主 MODES 白名单与客户端 MODES 一致', () => {
+  assert.deepEqual([...HOST_MODES].sort(), [...Rain.MODES].sort())
+})
+
+test('修仙字符集：纯汉字，无重复，无字母无数字，均在 CJK 区', () => {
+  assert.ok(Rain.GLYPHS_XIAN.length > 40, '修仙字符集应足够丰富')
+  assert.equal(new Set(Rain.GLYPHS_XIAN).size, Rain.GLYPHS_XIAN.length, 'duplicate xian glyphs')
+  for (const ch of Rain.GLYPHS_XIAN) {
+    const c = ch.codePointAt(0)
+    assert.ok(c > 127, `修仙字符集含 ASCII 字符 ${ch} U+${c.toString(16)}`)
+    assert.ok(!/[0-9]/.test(ch), `修仙字符集含数字 ${ch}`)
+    assert.ok(!/[A-Za-z]/.test(ch), `修仙字符集含字母 ${ch}`)
+    assert.ok(Rain.isCJK(ch), `修仙字符 ${ch} 不在 CJK 区 U+${c.toString(16)}`)
+  }
+})
+
+test('甲骨文字符集：纯汉字，无重复，无字母无数字，均在 CJK 区，且字形表全覆盖', () => {
+  assert.ok(Rain.GLYPHS_ORACLE.length > 80, '甲骨文字符集应足够丰富')
+  assert.equal(new Set(Rain.GLYPHS_ORACLE).size, Rain.GLYPHS_ORACLE.length, 'duplicate oracle glyphs')
+  for (const ch of Rain.GLYPHS_ORACLE) {
+    const c = ch.codePointAt(0)
+    assert.ok(c > 127, `甲骨文字符集含 ASCII 字符 ${ch} U+${c.toString(16)}`)
+    assert.ok(!/[0-9]/.test(ch), `甲骨文字符集含数字 ${ch}`)
+    assert.ok(!/[A-Za-z]/.test(ch), `甲骨文字符集含字母 ${ch}`)
+    assert.ok(Rain.isCJK(ch), `甲骨文字符 ${ch} 不在 CJK 区 U+${c.toString(16)}`)
+  }
+})
+
+test('isCJK：CJK 统一表意与扩展 A 判定，ASCII/假名排除', () => {
+  assert.ok(Rain.isCJK('道'))
+  assert.ok(Rain.isCJK('福'))
+  // 扩展 A 区间内一例
+  assert.ok(Rain.isCJK(String.fromCodePoint(0x3400)))
+  assert.ok(!Rain.isCJK('A'))
+  assert.ok(!Rain.isCJK('0'))
+  assert.ok(!Rain.isCJK('あ'))   // 日文假名不在 CJK 统一表意区
+  assert.ok(!Rain.isCJK(' '))
+})
+
+test('注音表完备：修仙/甲骨字符池每字都有拼音与注音', () => {
+  for (const pool of [Rain.GLYPHS_XIAN, Rain.GLYPHS_ORACLE]) {
+    for (const ch of pool) {
+      assert.ok(Rain.PINYIN[ch], `池字 ${ch} 缺拼音`)
+      const zy = Rain.zhuyinOf(ch)
+      assert.ok(zy.length >= 1, `池字 ${ch} 注音为空`)
+      // 注音符号全部落在注音区或声调符区（无字母数字混入）
+      for (const sym of zy) {
+        const c = sym.codePointAt(0)
+        const isBopomofo = c >= 0x3105 && c <= 0x3129
+        const isTone = c === 0x02CA || c === 0x02C7 || c === 0x02CB || c === 0x02D9
+        assert.ok(isBopomofo || isTone, `池字 ${ch} 注音含非法符号 ${sym} U+${c.toString(16)}`)
+      }
+    }
+  }
+})
+
+test('pinyinToZhuyin：声韵调确定转换（含 zh/ch/sh 空韵、j/q/x+u、y/w 归位、iou/ui/un 展开）', () => {
+  const cases = {
+    'dào': 'ㄉㄠˋ',       // 基础
+    'zhōng': 'ㄓㄨㄥ',     // ong→ㄨㄥ
+    'xuán': 'ㄒㄩㄢˊ',     // j/q/x + uan → üan
+    'nǚ': 'ㄋㄩˇ',         // ü
+    'rì': 'ㄖˋ',           // 空韵：ri 不写 ㄧ
+    'zhǐ': 'ㄓˇ',
+    'zì': 'ㄗˋ',
+    'shí': 'ㄕˊ',
+    'yuè': 'ㄩㄝˋ',       // y+u → ü
+    'yǒu': 'ㄧㄡˇ',        // you → iou
+    'yī': 'ㄧ',
+    'wáng': 'ㄨㄤˊ',       // w → u
+    'wǒ': 'ㄨㄛˇ',
+    'shuǐ': 'ㄕㄨㄟˇ',     // ui → uei
+    'chūn': 'ㄔㄨㄣ',      // un → uen
+    'quǎn': 'ㄑㄩㄢˇ',     // quan → üan
+    'jué': 'ㄐㄩㄝˊ',      // jue → üe
+    'èr': 'ㄦˋ',           // er
+    'xiān': 'ㄒㄧㄢ',      // ian
+    'huà': 'ㄏㄨㄚˋ',      // ua
+    'jiàng': 'ㄐㄧㄤˋ',    // iang
+    'bó': 'ㄅㄛˊ',         // o
+    'yīn': 'ㄧㄣ',         // yin
+    'yǒng': undefined,     // 不在断言内，防 typo 占位
+  }
+  for (const [py, want] of Object.entries(cases)) {
+    if (want === undefined) continue
+    assert.equal(Rain.pinyinToZhuyin(py), want, `${py} → 期望 ${want}`)
+  }
+  assert.equal(Rain.pinyinToZhuyin(''), '')
+  assert.equal(Rain.pinyinToZhuyin(null), '')
+  assert.equal(Rain.pinyinToZhuyin('xyz'), '', '无法解析的音节返回空')
+})
+
+test('glow 0.7 起默认开：布尔透传，坏值回退默认（true）', () => {
+  assert.equal(DEFAULT_CONFIG.glow, true)
+  assert.equal(normalizeConfig({}).glow, true)
+  assert.equal(normalizeConfig({ glow: true }).glow, true)
+  assert.equal(normalizeConfig({ glow: false, mode: 'xian' }).glow, false, '显式 false 尊重')
+  assert.equal(normalizeConfig({ glow: 0 }).glow, true, '非布尔回退默认（true）')
+  assert.equal(normalizeConfig({ mode: 'matrix' }).glow, true, '矩阵也默认发光，用户可关')
+})
+
+test('zhuyin 配置字段：默认 true，布尔透传，坏值回退', () => {
+  assert.equal(DEFAULT_CONFIG.zhuyin, true)
+  assert.equal(normalizeConfig({}).zhuyin, true)
+  assert.equal(normalizeConfig({ zhuyin: false }).zhuyin, false)
+  assert.equal(normalizeConfig({ zhuyin: 0 }).zhuyin, true, '非布尔回退默认')
 })
 
 test('activityLevel：滑窗内会话计数，过期条目顺带清除', () => {
@@ -84,10 +211,26 @@ test('忙碌事件集非空且为小写事件名', () => {
   }
 })
 
-test('宿主配色白名单与客户端 THEMES 一致', () => {
+test('宿主配色白名单与客户端 THEMES 一致（含鎏金；四色字段齐备）', () => {
   assert.deepEqual([...HOST_THEMES].sort(), Object.keys(Rain.THEMES).sort())
+  assert.ok(HOST_THEMES.includes('gold'), '鎏金配色在白名单')
   for (const name of HOST_THEMES) {
-    assert.ok(Rain.THEMES[name].head && Rain.THEMES[name].body, `${name} needs head/body colors`)
+    const t = Rain.THEMES[name]
+    if (t.rainbow) {
+      assert.ok(['cycle', 'random'].includes(t.rainbow), `${name} rainbow mode`)
+      continue
+    }
+    assert.ok(t.head && t.body, `${name} needs head/body colors`)
+    assert.ok(t.stroke && t.glow, `${name} needs stroke/glow for the glow effect`)
+    assert.ok(/^#[0-9a-f]{6}$/i.test(t.head) && /^#[0-9a-f]{6}$/i.test(t.body), `${name} head/body hex`)
+    assert.ok(/^rgba\(/.test(t.glow), `${name} glow is rgba`)
+  }
+  // 七彩：7 色、每色四件套齐备、互不重复
+  assert.equal(Rain.RAINBOW.length, 7)
+  const bodies = new Set(Rain.RAINBOW.map((c) => c.body))
+  assert.equal(bodies.size, 7, 'rainbow hues distinct')
+  for (const c of Rain.RAINBOW) {
+    assert.ok(c.head && c.stroke && c.glow, 'rainbow variant needs full theme quad')
   }
 })
 
@@ -247,4 +390,52 @@ test('宿主路由：config 读写往返 + SSE 首帧 + 活跃度广播', async 
   } finally {
     for (const cleanup of cleanups) cleanup() // 清掉 tick interval，测试进程可退出
   }
+})
+test('载入迁移（v 闸一次性）：存量 0.6 旧默认升到 0.7 新默认，显式值与 v≥7 尊重', async () => {
+  const run = async (stored, checks) => {
+    const routes = []
+    const cleanups = []
+    const ctx = {
+      storageDomain: {
+        open: async () => ({
+          table: () => ({ get: () => stored, put: async () => {} }),
+          close: async () => {},
+        }),
+      },
+      webServer: { register: (r) => { routes.push(r); return () => {} } },
+      connection: { requestRejection: () => undefined },
+      on: () => () => {},
+      effect: (fn) => { const c = fn(); if (typeof c === 'function') cleanups.push(c) },
+    }
+    Host.apply(ctx)
+    await new Promise((resolve) => setImmediate(resolve)) // 等 domainPromise 微任务链落定（存储载入 + 迁移）
+    const res = mockRes()
+    await routes[0].handler(mockReq('GET', '/dsh-matrix/api/config'), res)
+    try {
+      checks(JSON.parse(res.body))
+    } finally {
+      for (const cleanup of cleanups) cleanup()
+    }
+  }
+
+  // 0.6 存量：全旧默认 → 全升新默认，显式改过的 opacity 保留
+  await run(
+    { mode: 'matrix', themeDark: 'classic', themeLight: 'amber', opacity: 0.4 },
+    (cfg) => {
+      assert.equal(cfg.mode, 'oracle', '旧默认 matrix → 甲骨')
+      assert.equal(cfg.themeDark, 'rainbow-cycle', '旧默认经典绿 → 七彩轮转')
+      assert.equal(cfg.themeLight, 'rainbow-cycle', '旧默认琥珀 → 七彩轮转')
+      assert.equal(cfg.glow, true, '新默认观感含金边发光')
+      assert.equal(cfg.opacity, 0.4, '用户改过的值不动')
+      assert.equal(cfg.v, 7, '迁移后落版本标记')
+    })
+
+  // v≥7：刻意选回的 matrix + 关金光不被回翻
+  await run(
+    { v: 7, mode: 'matrix', themeDark: 'classic', glow: false },
+    (cfg) => {
+      assert.equal(cfg.mode, 'matrix', 'v≥7 尊重存量选择')
+      assert.equal(cfg.glow, false, 'v≥7 尊重显式关闭')
+      assert.equal(cfg.themeDark, 'classic')
+    })
 })

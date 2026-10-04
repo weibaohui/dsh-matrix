@@ -1,0 +1,11 @@
+Oracle-bone (甲骨文) glyph data in this directory is derived from:
+
+  Li, Q.-S. & Bian, Y.-L. "An Interpretable Parametric Representation and
+  Open Dataset for Oracle Bone Script." npj Heritage Science (2026).
+  https://github.com/aylqs2025/oracle-bone-jgw-1203
+
+Licensed under Creative Commons Attribution 4.0 International (CC-BY 4.0).
+Path data (polyline form) for the curated character pool is extracted from
+data/svg_polyline/ and embedded into the plugin bundle for offline rendering.
+
+You are free to use and redistribute this data with attribution.
