@@ -167,7 +167,14 @@ const EN = {
 }
 
 const LOCALE_DICT = { zh: ZH, en: EN }
-const API = '/dsh-matrix/api'
+// API 基址随页面走：子路径反代（如 https://host/app/dsh/）下，绝对路径 /dsh-matrix/api
+// 会打到站点根而 404。与宿主官方客户端一致，用 document.baseURI 推导（dsh-sync#14 同款）。
+const API = (() => {
+  try {
+    const base = (typeof document !== 'undefined' && document.baseURI) || (typeof location !== 'undefined' ? location.href : '/')
+    return new URL('dsh-matrix/api', new URL('.', base)).pathname.replace(/\/+$/, '')
+  } catch { return '/dsh-matrix/api' }
+})()
 
 const THEME_ORDER = ['classic', 'amber', 'cyan', 'magenta', 'gold', 'rainbow-cycle', 'rainbow-random']
 const THEME_LABEL_KEYS = { classic: 'themeClassic', amber: 'themeAmber', cyan: 'themeCyan', magenta: 'themeMagenta', gold: 'themeGold', 'rainbow-cycle': 'themeRainbowCycle', 'rainbow-random': 'themeRainbowRandom' }
